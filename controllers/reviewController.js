@@ -2,9 +2,17 @@ const Review = require("../models/Review");
 const asyncHandler = require("express-async-handler");
 
 const getReviews = asyncHandler(async (req, res) => {
-  const { user_id, album_id } = req.body;
+  let { user_id, album_id } = req.body;
 
-  const reviews = await Review.find().lean();
+  if (!user_id && !album_id) {
+    const { user_id: queryUserId, album_id: queryAlbumId } = req.query;
+
+    user_id = queryUserId;
+    album_id = queryAlbumId;
+  }
+  console.log(user_id, album_id);
+
+  let reviews;
 
   if (user_id && album_id) {
     reviews = await Review.find({ user_id, album_id }).lean();
@@ -13,15 +21,13 @@ const getReviews = asyncHandler(async (req, res) => {
   } else if (album_id) {
     reviews = await Review.find({ album_id }).lean();
   } else {
-    return res
-      .status(400)
-      .json({ message: "Please provide user_id or album_id" });
+    reviews = await Review.find().lean();
   }
 
   if (!reviews || reviews.length === 0) {
     return res.status(400).json({ message: "No Reviews" });
   }
-
+  console.log(reviews);
   res.json(reviews);
 });
 
