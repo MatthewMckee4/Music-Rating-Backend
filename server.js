@@ -1,25 +1,39 @@
+require("dotenv").config();
 const express = require("express");
-const app = express();
 const path = require("path");
 const cookieParser = require("cookie-parser");
-const { logger } = require("./middleware/logger");
-const PORT = process.env.PORT || 3500;
 const cors = require("cors");
-const corsOptions = require("./config/corsOptions");
+const mongoose = require("mongoose");
+
+const logger = require("./middleware/logger").logger;
 const errorHandler = require("./middleware/errorHandler");
+const connectDB = require("./config/dbConn");
+const corsOptions = require("./config/corsOptions");
 
+const PORT = process.env.PORT || 3500;
+
+// Initialize Express App
+const app = express();
+
+console.log(`Environment: ${process.env.NODE_ENV}`);
+
+// Database Connection
+connectDB();
+
+// Middlewares
 app.use(logger);
-
 app.use(cors(corsOptions));
-
 app.use(express.json());
-
 app.use(cookieParser());
 
+// Static Files
 app.use("/", express.static(path.join(__dirname, "public")));
 
+// Routes
 app.use("/", require("./routes/root"));
+app.use("/reviews", require("./routes/reviewRoutes"));
 
+// 404 Handler
 app.all("*", (req, res) => {
   res.status(404);
   if (req.accepts("html")) {
@@ -31,6 +45,19 @@ app.all("*", (req, res) => {
   }
 });
 
+// Error Handler
 app.use(errorHandler);
 
-app.listen(PORT, () => console.log(`server running on port ${PORT}`));
+// MongoDB Event Listeners
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error(err);
+  require("./middleware/logger").logEvents(
+    `${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`,
+    "mongoErrLog.log"
+  );
+});
