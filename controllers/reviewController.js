@@ -1,47 +1,36 @@
 const Review = require("../models/Review");
 const asyncHandler = require("express-async-handler");
 
+const findReviews = async (user_id, album_id) => {
+  let query = {};
+  if (user_id) query.user_id = user_id;
+  if (album_id) query.album_id = album_id;
+
+  return await Review.find(query).lean();
+};
+
 const getReviews = asyncHandler(async (req, res) => {
-  let { user_id, album_id } = req.body;
+  const { user_id, album_id } = req.query;
 
   if (!user_id && !album_id) {
-    const { user_id: queryUserId, album_id: queryAlbumId } = req.query;
-
-    user_id = queryUserId;
-    album_id = queryAlbumId;
-  }
-  console.log(user_id, album_id);
-
-  let reviews;
-
-  if (user_id && album_id) {
-    reviews = await Review.find({ user_id, album_id }).lean();
-  } else if (user_id) {
-    reviews = await Review.find({ user_id }).lean();
-  } else if (album_id) {
-    reviews = await Review.find({ album_id }).lean();
-  } else {
-    reviews = await Review.find().lean();
+    return res.status(400).json({ message: "Missing user_id and album_id" });
   }
 
-  if (!reviews || reviews.length === 0) {
-    return res.status(400).json({ message: "No Reviews" });
+  const reviews = await findReviews(user_id, album_id);
+
+  if (!reviews.length) {
+    return res.status(404).json({ message: "No Reviews Found" });
   }
-  console.log(reviews);
   res.json(reviews);
 });
 
 const createReview = asyncHandler(async (req, res) => {
   const { user_id, album_id, rating, text } = req.body;
 
-  if (!user_id) {
+  if (!user_id || !album_id) {
     return res
       .status(400)
-      .json({ message: "Review was not created, user id must be provided" });
-  } else if (!album_id) {
-    return res
-      .status(400)
-      .json({ message: "Review was not created, album id must be provided" });
+      .json({ message: "user_id and album_id are required" });
   }
 
   const duplicate = await Review.findOne({ user_id, album_id }).lean().exec();
@@ -49,42 +38,42 @@ const createReview = asyncHandler(async (req, res) => {
   if (duplicate) {
     return res
       .status(409)
-      .json({ message: "Review already made for this album" });
+      .json({ message: "Review already exists for this album" });
   }
 
-  const reviewObject = { user_id, album_id, rating, text };
-
-  const review = await Review.create(reviewObject);
-
-  if (review) {
-    res.status(201).json({ message: "Review created" });
-  } else {
-    res.status(400).json({ message: "Review not created" });
-  }
+  await Review.create({ user_id, album_id, rating, text });
+  res.status(201).json({ message: "Review created" });
 });
 
 const updateReview = asyncHandler(async (req, res) => {
   const { user_id, album_id, rating, text } = req.body;
+  console.log(req.body);
 
   if (!user_id || !album_id) {
-    return res.status(400).json({ message: "All fields are required" });
+    return res
+      .status(400)
+      .json({ message: "user_id and album_id are required" });
   }
 
   const review = await Review.findOne({ user_id, album_id }).exec();
-
   if (!review) {
     return res.status(400).json({ message: "Review not found" });
   }
 
-  if (rating) {
-    review.rating = rating;
+  const update = {};
+  if (rating !== "") {
+    update.rating = rating;
+  } else {
+    update.$unset = { rating: "" };
   }
 
-  if (text) {
-    review.text = text;
+  if (text !== "") {
+    update.text = text;
+  } else {
+    update.$unset = { ...update.$unset, text: "" };
   }
 
-  await review.save();
+  await Review.updateOne({ user_id, album_id }, update);
 
   res.json({ message: "Review updated" });
 });
@@ -93,20 +82,19 @@ const deleteReview = asyncHandler(async (req, res) => {
   const { user_id, album_id } = req.body;
 
   if (!user_id || !album_id) {
-    return res.status(400).json({ message: "All fields are required" });
+    return res
+      .status(400)
+      .json({ message: "user_id and album_id are required" });
   }
 
-  const review = await Review.findOne({ user_id, album_id }).exec();
-
+  const review = await Review.findOneAndDelete({ user_id, album_id }).exec();
   if (!review) {
     return res.status(400).json({ message: "Review not found" });
   }
 
-  const result = await review.deleteOne();
-
-  const reply = `User ${result.user_id}, album ${result.album_id} review deleted`;
-
-  res.json(reply);
+  res.json({
+    message: `Review deleted for user ${user_id}, album ${album_id}`,
+  });
 });
 
 module.exports = {
