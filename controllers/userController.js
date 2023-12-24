@@ -22,8 +22,6 @@ const getUserBySpotifyId = asyncHandler(async (req, res) => {
 // Create a new user
 const createUser = asyncHandler(async (req, res) => {
   const { name, id, image } = req.body;
-  console.log(req.body);
-  console.log(name, id, image);
   if (!name || !id) {
     return res
       .status(400)
