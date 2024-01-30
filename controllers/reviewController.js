@@ -81,15 +81,11 @@ const updateReview = asyncHandler(async (req, res) => {
 
   const update = {};
   if (rating !== "") {
-    update.rating = rating;
-  } else {
-    update.$unset = { rating: "" };
+    update.$set = { rating };
   }
 
   if (text !== "") {
-    update.text = text;
-  } else {
-    update.$unset = { ...update.$unset, text: "" };
+    update.$set = { ...update.$set, text };
   }
 
   await Review.updateOne({ user: user._id, album_id }, update);
