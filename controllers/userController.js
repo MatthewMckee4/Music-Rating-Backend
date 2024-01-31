@@ -27,12 +27,12 @@ const createUser = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: " Spotify ID are required" });
   }
 
-  console.log("Attempting to create user with id:", id);
+  console.log("Attempting to create user:", name);
 
   const duplicate = await User.findOne({ id }).lean();
 
   if (duplicate) {
-    console.log("User already exists with id:", id);
+    console.log("User already exists:", name);
     return res.status(201).json({ message: "User already exists" });
   }
 
