@@ -34,6 +34,7 @@ const getReviews = asyncHandler(async (req, res) => {
 
 const createReview = asyncHandler(async (req, res) => {
   const { user_id, album_id, rating, text } = req.body;
+  console.log(req.body);
 
   if (!user_id || !album_id) {
     return res
@@ -62,6 +63,7 @@ const createReview = asyncHandler(async (req, res) => {
 
 const updateReview = asyncHandler(async (req, res) => {
   const { user_id, album_id, rating, text } = req.body;
+  console.log(req.body);
 
   if (!user_id || !album_id) {
     return res
